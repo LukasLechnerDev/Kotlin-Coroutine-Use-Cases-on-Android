@@ -14,24 +14,27 @@ class SequentialNetworkRequestsRxViewModel(
     private val disposables = CompositeDisposable()
 
     fun perform2SequentialNetworkRequest() {
-        uiState.value = UiState.Loading
 
+        //use flatMap to chain the two network requests
+        // .subscribeOn(Schedulers.io()) is used to perform the network requests on a background thread
+        // .observeOn(AndroidSchedulers.mainThread()) is used to observe the results on the main thread
         mockApi.getRecentAndroidVersions()
-            .flatMap { androidVersions ->
-                val recentVersion = androidVersions.last()
-                mockApi.getAndroidVersionFeatures(recentVersion.apiLevel)
+            .flatMap {
+                val latestVersion = it.last()
+                mockApi.getAndroidVersionFeatures(latestVersion.apiLevel)
             }
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
-            .subscribeBy(
-                onSuccess = { featureVersions ->
-                    uiState.value = UiState.Success(featureVersions)
+            .subscribeBy  (
+                onSuccess = {
+                    uiState.value = UiState.Success(it)
                 },
                 onError = {
-                    uiState.value = UiState.Error("Network Request failed.")
+                    uiState.value = UiState.Error("Network request failed")
                 }
             )
             .addTo(disposables)
+
     }
 
     override fun onCleared() {
